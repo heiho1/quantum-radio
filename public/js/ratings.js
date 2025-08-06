@@ -152,9 +152,9 @@ export async function rateTrack(rating) {
 
 export function initializeRatingButtons() {
     document.querySelectorAll('.rating-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
+        btn.addEventListener('click', async () => {
             const rating = btn.getAttribute('data-rating');
-            rateTrack(rating);
+            await rateTrack(rating);
         });
     });
 }
