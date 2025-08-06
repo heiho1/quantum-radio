@@ -2,6 +2,13 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Build Status
+
+![CI/CD Pipeline](https://github.com/heiho1/quantum-radio/actions/workflows/ci.yml/badge.svg)
+![Tests](https://img.shields.io/badge/tests-passing-brightgreen)
+![Security](https://img.shields.io/badge/security-audited-blue)
+![Docker](https://img.shields.io/badge/docker-ready-success)
+
 ## Project Overview
 
 Quantum Radio is a streaming radio web application that plays high-quality audio with real-time metadata, track ratings, and recently played tracks. It consists of:
@@ -14,11 +21,20 @@ Quantum Radio is a streaming radio web application that plays high-quality audio
 
 ```
 quantum-radio/
+|-- .dockerignore                 # Docker ignore rules
 |-- .gitignore                    # Git ignore rules (excludes node_modules, logs, etc.)
 |-- CLAUDE.md                     # Project guidance for Claude Code
+|-- Dockerfile                    # Production Docker container
+|-- Dockerfile.dev                # Development Docker container
+|-- Makefile                      # Make targets for dev, prod, and test workflows
 |-- QuantumRadioLogo.png          # Brand logo asset
 |-- QuantumRadio_Style_Guide.txt  # Brand and UI style guidelines
-|-- database.db                   # SQLite database (committed artifact)
+|-- database.db                   # SQLite database (development only)
+|-- database.js                   # Database abstraction layer (SQLite/PostgreSQL)
+|-- docker-compose.yml            # Docker orchestration configuration (dev/simple prod)
+|-- docker-compose.prod.yml       # Production Docker orchestration (Nginx + PostgreSQL)
+|-- init.sql                      # PostgreSQL database initialization script
+|-- nginx.conf                    # Nginx configuration for production
 |-- node_modules/                 # npm dependencies (gitignored)
 |-- package-lock.json             # npm lockfile
 |-- package.json                  # Project config and dependencies
@@ -61,7 +77,8 @@ quantum-radio/
 
 ### Backend (`server.js`)
 - Express.js server on port 3000 (configurable via PORT env var)
-- SQLite database (`database.db`) with two tables:
+- Database abstraction layer supporting SQLite (dev) and PostgreSQL (production)
+- Database tables:
   - `users`: basic user management (id, name, email, created_at)
   - `track_ratings`: track ratings with user sessions (track_id, rating, user_session, etc.)
 - API endpoints:
@@ -71,6 +88,7 @@ quantum-radio/
   - `GET /api/ratings/:trackId/user` - get user's rating for track
   - `POST /api/ratings` - submit/update rating
   - `DELETE /api/ratings/:trackId/user` - delete user's rating
+- Static file serving disabled in production (handled by Nginx)
 
 ### Database Schema
 - Automatic table creation on startup
@@ -80,23 +98,109 @@ quantum-radio/
 
 ## Development Commands
 
+### Make Targets (Recommended)
 ```bash
+# Show all available commands
+make help
+
+# Development
+make install          # Install dependencies
+make dev              # Start local development server
+make dev-docker       # Start development in Docker container
+
+# Production  
+make prod             # Start production server locally
+make prod-docker      # Start full production stack (Nginx + PostgreSQL)
+
+# Testing
+make test             # Run all tests
+make test-watch       # Run tests in watch mode
+make test-coverage    # Run tests with coverage
+make test-security    # Run security vulnerability audit
+make test-all         # Run all tests including security audit
+
+# Utilities
+make build            # Build Docker images
+make logs             # Show container logs
+make stop             # Stop containers
+make health           # Check service health
+make clean            # Clean up resources
+
+# Quick start workflows
+make quick-dev        # Install + start development
+make quick-prod       # Build + start production
+```
+
+### Direct NPM Commands
+```bash
+# Install dependencies
+npm install
+
 # Start development server with auto-reload
 npm run dev
 
 # Start production server
 npm start
 
-# Install dependencies
-npm install
+# Run tests
+npm test
+
+# Run security audit
+npm run test:security
+```
+
+### Docker Development
+
+#### Using Docker Compose (Recommended)
+```bash
+# Development: Start simple production container on port 3000
+npm run docker:up
+
+# Development: Start development container on port 3001 with hot reload
+npm run docker:up:dev
+
+# Production: Start full production stack (Nginx + PostgreSQL + API)
+npm run docker:up:prod
+
+# Stop containers
+npm run docker:down
+
+# Stop production stack
+npm run docker:down:prod
+
+# View container logs
+npm run docker:logs
+
+# View production stack logs
+npm run docker:logs:prod
+```
+
+#### Using Docker Commands Directly
+```bash
+# Build production image
+npm run docker:build
+
+# Build development image
+npm run docker:build:dev
+
+# Run production container
+npm run docker:run
+
+# Run development container with volume mounting
+npm run docker:run:dev
+
+# Clean up unused Docker resources
+npm run docker:clean
 ```
 
 ## Technology Stack
 
-- **Backend**: Express.js, SQLite3, CORS, express-fingerprint, dotenv
+- **Backend**: Express.js, SQLite3 (dev), PostgreSQL (prod), CORS, express-fingerprint, dotenv
 - **Frontend**: Vanilla HTML/CSS/JavaScript, HLS.js
 - **Audio**: HLS streaming with external metadata API
 - **Styling**: CSS custom properties, glassmorphism design, Montserrat + Open Sans fonts
+- **Infrastructure**: Docker, Docker Compose, Nginx (production), PostgreSQL (production)
+- **Testing**: Jest (backend), Vitest (frontend)
 
 ## Design System
 
@@ -107,6 +211,92 @@ The application follows the Quantum Radio brand guidelines (`QuantumRadio_Style_
 
 ## Development Notes
 
-- No test suite is currently configured (`npm test` returns error)
+- Test suite configured with Jest (backend) and Vitest (frontend)
+- Security testing integrated with npm audit for vulnerability analysis
 - External dependencies: HLS stream and metadata from CloudFront CDN
 - Uses hardcoded stream URL in both `stream_URL.txt` and frontend code
+- PostgreSQL driver (`pg`) is optional - only required for production deployments
+- Development uses SQLite and doesn't require PostgreSQL dependencies
+
+## Security Testing
+
+The application includes security vulnerability scanning using npm audit:
+
+### Security Commands
+```bash
+# Check for security vulnerabilities (moderate+ severity)
+make test-security
+npm run test:security
+
+# Attempt to automatically fix vulnerabilities
+make test-security-fix
+npm run test:security:fix
+
+# Run comprehensive test suite (unit tests + security audit)
+make test-all
+```
+
+### Security Configuration
+- **Audit Level**: Set to `moderate` to catch medium and high severity issues
+- **Auto-fix**: Available via `test:security:fix` to automatically update vulnerable packages
+- **Integration**: Security audit included in comprehensive test suite (`test-all`)
+
+## CI/CD Pipeline
+
+The project uses GitHub Actions for continuous integration and deployment:
+
+### Workflow Jobs
+1. **Unit Tests**: Runs tests on Node.js 18.x and 20.x with coverage reporting
+2. **Security Audit**: Performs npm security vulnerability scanning
+3. **Docker Build**: Tests both development and production container builds
+4. **Code Quality**: Runs linting and package auditing with detailed reporting
+5. **Staging Deploy**: Automatic deployment to staging on main branch
+
+### Workflow Triggers
+- **Push**: Triggers on main, master, develop, and docker-containerization branches
+- **Pull Request**: Triggers on PRs to main, master, and develop branches
+- **Manual**: Can be triggered manually from GitHub Actions tab
+
+### Test Coverage
+- Coverage reports uploaded to Codecov
+- Test results displayed in GitHub Actions summary
+- Security vulnerabilities reported with severity levels
+
+### Status Badges
+The build status badges show:
+- **CI/CD Pipeline**: Overall workflow status
+- **Tests**: Unit test status
+- **Security**: Security audit status  
+- **Docker**: Container build status
+
+## Docker Deployment
+
+The application supports multiple Docker deployment configurations:
+
+### Production Deployment (`docker-compose.prod.yml`)
+- **Architecture**: Multi-container setup with Nginx, Node.js API, and PostgreSQL
+- **Frontend**: Nginx serves static files with compression, caching, and rate limiting
+- **Backend**: Node.js API container (port 3000, internal network)
+- **Database**: PostgreSQL 16 with persistent volume storage
+- **Port**: External access on port 80 (Nginx)
+- **Security**: Non-root users, network isolation, security headers
+- **Health Checks**: All services monitored with automatic health checks
+
+### Development Environment (`docker-compose.yml`)
+- **Development**: `quantum-radio-dev` service on port 3001 with hot reload
+- **Simple Production**: `quantum-radio-prod` service on port 3000 with SQLite
+- **Database**: SQLite for development, volume-mounted for persistence
+- **Hot Reload**: Development container supports live code changes
+
+### Database Configuration
+- **Development**: SQLite database (`database.db`) with simple setup (no PostgreSQL required)
+- **Production**: PostgreSQL with automatic initialization via `init.sql`
+- **Abstraction**: Database layer (`database.js`) supports both SQLite and PostgreSQL
+- **Environment**: Database selection based on `NODE_ENV` variable
+- **Dependencies**: PostgreSQL driver (`pg`) conditionally loaded only in production
+
+### Nginx Configuration
+- **Static Assets**: Serves frontend files with optimized caching headers
+- **API Proxy**: Routes `/api/*` requests to backend with rate limiting
+- **Security**: Includes security headers and HTTPS-ready configuration
+- **Performance**: Gzip compression and efficient static file serving

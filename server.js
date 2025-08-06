@@ -1,16 +1,21 @@
 const express = require('express');
 const cors = require('cors');
-const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 const Fingerprint = require('express-fingerprint');
+const Database = require('./database');
 require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const db = new Database();
 
 app.use(cors());
 app.use(express.json());
-app.use(express.static('public'));
+
+// Only serve static files in development
+if (process.env.NODE_ENV !== 'production') {
+  app.use(express.static('public'));
+}
 
 // Add fingerprinting middleware
 app.use(Fingerprint({
@@ -27,115 +32,85 @@ app.use(Fingerprint({
   ]
 }));
 
-const db = new sqlite3.Database('./database.db', (err) => {
-  if (err) {
-    console.error('Error opening database:', err.message);
-  } else {
-    console.log('Connected to SQLite database.');
-    
-    db.run(`CREATE TABLE IF NOT EXISTS users (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      name TEXT NOT NULL,
-      email TEXT UNIQUE NOT NULL,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    )`);
-    
-    db.run(`CREATE TABLE IF NOT EXISTS track_ratings (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      track_id TEXT NOT NULL,
-      artist TEXT NOT NULL,
-      title TEXT NOT NULL,
-      album TEXT,
-      rating TEXT NOT NULL CHECK(rating IN ('love', 'happy', 'sad', 'angry')),
-      user_session TEXT NOT NULL,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      UNIQUE(track_id, user_session)
-    )`);
-    
-    db.run(`CREATE INDEX IF NOT EXISTS idx_track_ratings_track_id ON track_ratings(track_id)`);
-    db.run(`CREATE INDEX IF NOT EXISTS idx_track_ratings_user_session ON track_ratings(user_session)`);
-  }
+// Initialize database connection
+db.connect().catch(err => {
+  console.error('Failed to connect to database:', err);
+  process.exit(1);
 });
 
 app.get('/', (req, res) => {
   res.json({ message: 'Quantum Radio Server is running!' });
 });
 
-app.get('/api/users', (req, res) => {
-  db.all("SELECT * FROM users", [], (err, rows) => {
-    if (err) {
-      res.status(500).json({ error: err.message });
-      return;
-    }
+app.get('/api/users', async (req, res) => {
+  try {
+    const rows = await db.query("SELECT * FROM users", []);
     res.json({ users: rows });
-  });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
-app.post('/api/users', (req, res) => {
+app.post('/api/users', async (req, res) => {
   const { name, email } = req.body;
   
   if (!name || !email) {
     return res.status(400).json({ error: 'Name and email are required' });
   }
   
-  db.run("INSERT INTO users (name, email) VALUES (?, ?)", [name, email], function(err) {
-    if (err) {
-      res.status(500).json({ error: err.message });
-      return;
-    }
-    res.json({ id: this.lastID, name, email });
-  });
+  try {
+    const result = await db.run("INSERT INTO users (name, email) VALUES (?, ?)", [name, email]);
+    res.json({ id: result.lastID, name, email });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // Get ratings for a specific track
-app.get('/api/ratings/:trackId', (req, res) => {
+app.get('/api/ratings/:trackId', async (req, res) => {
   const trackId = req.params.trackId;
   
-  db.all(
-    `SELECT rating, COUNT(*) as count 
-     FROM track_ratings 
-     WHERE track_id = ? 
-     GROUP BY rating`,
-    [trackId],
-    (err, rows) => {
-      if (err) {
-        res.status(500).json({ error: err.message });
-        return;
-      }
-      
-      const stats = { love: 0, happy: 0, sad: 0, angry: 0 };
-      rows.forEach(row => {
-        stats[row.rating] = row.count;
-      });
-      
-      const total = stats.love + stats.happy + stats.sad + stats.angry;
-      
-      res.json({ stats, total });
-    }
-  );
+  try {
+    const rows = await db.query(
+      `SELECT rating, COUNT(*) as count 
+       FROM track_ratings 
+       WHERE track_id = ? 
+       GROUP BY rating`,
+      [trackId]
+    );
+    
+    const stats = { love: 0, happy: 0, sad: 0, angry: 0 };
+    rows.forEach(row => {
+      stats[row.rating] = row.count;
+    });
+    
+    const total = stats.love + stats.happy + stats.sad + stats.angry;
+    
+    res.json({ stats, total });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // Get user's rating for a specific track
-app.get('/api/ratings/:trackId/user', (req, res) => {
+app.get('/api/ratings/:trackId/user', async (req, res) => {
   const trackId = req.params.trackId;
   const userFingerprint = req.fingerprint.hash;
   
-  db.get(
-    "SELECT rating FROM track_ratings WHERE track_id = ? AND user_session = ?",
-    [trackId, userFingerprint],
-    (err, row) => {
-      if (err) {
-        res.status(500).json({ error: err.message });
-        return;
-      }
-      
-      res.json({ rating: row ? row.rating : null });
-    }
-  );
+  try {
+    const row = await db.get(
+      "SELECT rating FROM track_ratings WHERE track_id = ? AND user_session = ?",
+      [trackId, userFingerprint]
+    );
+    
+    res.json({ rating: row ? row.rating : null });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // Submit or update a rating
-app.post('/api/ratings', (req, res) => {
+app.post('/api/ratings', async (req, res) => {
   const { trackId, artist, title, album, rating } = req.body;
   const userFingerprint = req.fingerprint.hash;
   
@@ -151,50 +126,40 @@ app.post('/api/ratings', (req, res) => {
     });
   }
   
-  // Use INSERT OR REPLACE to handle updates
-  db.run(
-    `INSERT OR REPLACE INTO track_ratings 
-     (track_id, artist, title, album, rating, user_session) 
-     VALUES (?, ?, ?, ?, ?, ?)`,
-    [trackId, artist, title, album || null, rating, userFingerprint],
-    function(err) {
-      if (err) {
-        res.status(500).json({ error: err.message });
-        return;
-      }
-      
-      res.json({ 
-        success: true, 
-        trackId, 
-        rating,
-        userFingerprint,
-        message: 'Rating saved successfully' 
-      });
-    }
-  );
+  try {
+    await db.upsertRating(trackId, artist, title, album || null, rating, userFingerprint);
+    
+    res.json({ 
+      success: true, 
+      trackId, 
+      rating,
+      userFingerprint,
+      message: 'Rating saved successfully' 
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // Delete a rating
-app.delete('/api/ratings/:trackId/user', (req, res) => {
+app.delete('/api/ratings/:trackId/user', async (req, res) => {
   const trackId = req.params.trackId;
   const userFingerprint = req.fingerprint.hash;
   
-  db.run(
-    "DELETE FROM track_ratings WHERE track_id = ? AND user_session = ?",
-    [trackId, userFingerprint],
-    function(err) {
-      if (err) {
-        res.status(500).json({ error: err.message });
-        return;
-      }
-      
-      res.json({ 
-        success: true, 
-        deleted: this.changes > 0,
-        message: this.changes > 0 ? 'Rating deleted' : 'No rating found to delete'
-      });
-    }
-  );
+  try {
+    const result = await db.run(
+      "DELETE FROM track_ratings WHERE track_id = ? AND user_session = ?",
+      [trackId, userFingerprint]
+    );
+    
+    res.json({ 
+      success: true, 
+      deleted: result.changes > 0,
+      message: result.changes > 0 ? 'Rating deleted' : 'No rating found to delete'
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 process.on('SIGINT', () => {
@@ -208,6 +173,6 @@ process.on('SIGINT', () => {
   });
 });
 
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running on http://localhost:${PORT}`);
 });
