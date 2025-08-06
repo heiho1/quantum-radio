@@ -10,7 +10,16 @@
     "test:backend": "jest tests/backend",
     "test:frontend": "vitest run tests/frontend",
     "test:watch": "npm run test:backend -- --watch & npm run test:frontend -- --watch",
-    "test:coverage": "jest --coverage && vitest run --coverage"
+    "test:coverage": "jest --coverage && vitest run --coverage",
+    "docker:build": "docker build -t quantum-radio:latest .",
+    "docker:build:dev": "docker build -f Dockerfile.dev -t quantum-radio:dev .",
+    "docker:run": "docker run -p 3000:3000 -v $(pwd)/database.db:/app/database.db quantum-radio:latest",
+    "docker:run:dev": "docker run -p 3001:3000 -v $(pwd):/app -v /app/node_modules -v $(pwd)/database.db:/app/database.db quantum-radio:dev",
+    "docker:up": "docker compose up quantum-radio-prod",
+    "docker:up:dev": "docker compose --profile dev up quantum-radio-dev",
+    "docker:down": "docker compose down",
+    "docker:logs": "docker compose logs -f",
+    "docker:clean": "docker system prune -f && docker image prune -f"
   },
   "keywords": [],
   "author": "",
