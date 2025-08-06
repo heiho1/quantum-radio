@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quantum Radio</title>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700&family=Open+Sans:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/variables.css">
+    <link rel="stylesheet" href="css/base.css">
+    <link rel="stylesheet" href="css/header.css">
+    <link rel="stylesheet" href="css/widgets.css">
+    <link rel="stylesheet" href="css/ratings.css">
+</head>
+<body>
+    <div class="container">
+        <div class="radio-player">
+            <div class="header-brand">
+                <div class="brand-text">
+                    <span class="quantum-text">Quantum</span>
+                </div>
+                <img src="QuantumRadioLogo.png" alt="Quantum Radio Logo" class="logo">
+                <div class="brand-text">
+                    <span class="radio-text">Radio</span>
+                </div>
+            </div>
+            
+            <div class="metadata-widget">
+                <div class="audio-quality">
+                    <strong>Audio Quality:</strong> <span id="audioQuality">Loading...</span>
+                </div>
+                <div class="current-track">
+                    <div class="album-section">
+                        <img id="albumCover" class="album-cover" src="https://d3d4yli4hf5bmh.cloudfront.net/cover.jpg" alt="Album Cover" onerror="this.style.display='none'">
+                    </div>
+                    <div class="track-info">
+                        <div class="track-title" id="trackTitle">Loading track information...</div>
+                        <div class="track-artist" id="trackArtist"></div>
+                        <div class="track-album" id="trackAlbum"></div>
+                        <div class="audio-player">
+                            <audio id="audioPlayer" controls preload="none">
+                                Your browser does not support the audio element.
+                            </audio>
+                        </div>
+                        <div class="rating-widget">
+                            <div class="rating-label">Rate this track:</div>
+                            <div class="rating-buttons">
+                                <button class="rating-btn" data-rating="love" title="Love it!">😍</button>
+                                <button class="rating-btn" data-rating="happy" title="Like it">😊</button>
+                                <button class="rating-btn" data-rating="sad" title="Don't like it">😢</button>
+                                <button class="rating-btn" data-rating="angry" title="Hate it">😠</button>
+                            </div>
+                            <div class="rating-feedback" id="ratingFeedback"></div>
+                            <div class="rating-stats-under-cover">
+                                <div class="total-ratings">
+                                    <span>📊</span>
+                                    <span id="totalRatings">0 ratings</span>
+                                </div>
+                                <div class="rating-breakdown" id="ratingBreakdown">
+                                    <div class="rating-count" id="loveCount">😍 0</div>
+                                    <div class="rating-count" id="happyCount">😊 0</div>
+                                    <div class="rating-count" id="sadCount">😢 0</div>
+                                    <div class="rating-count" id="angryCount">😠 0</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="previous-tracks-widget">
+                <div class="previous-tracks-title">🎵 Recently Played</div>
+                <div class="track-list" id="previousTracksList">
+                    <div class="loading-metadata">Loading previous tracks...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="js/main.js"></script>
+</body>
+</html>
