@@ -19,6 +19,7 @@ quantum-radio/
 |-- CLAUDE.md                     # Project guidance for Claude Code
 |-- Dockerfile                    # Production Docker container
 |-- Dockerfile.dev                # Development Docker container
+|-- Makefile                      # Make targets for dev, prod, and test workflows
 |-- QuantumRadioLogo.png          # Brand logo asset
 |-- QuantumRadio_Style_Guide.txt  # Brand and UI style guidelines
 |-- database.db                   # SQLite database (development only)
@@ -90,7 +91,40 @@ quantum-radio/
 
 ## Development Commands
 
-### Local Development
+### Make Targets (Recommended)
+```bash
+# Show all available commands
+make help
+
+# Development
+make install          # Install dependencies
+make dev              # Start local development server
+make dev-docker       # Start development in Docker container
+
+# Production  
+make prod             # Start production server locally
+make prod-docker      # Start full production stack (Nginx + PostgreSQL)
+
+# Testing
+make test             # Run all tests
+make test-watch       # Run tests in watch mode
+make test-coverage    # Run tests with coverage
+make test-security    # Run security vulnerability audit
+make test-all         # Run all tests including security audit
+
+# Utilities
+make build            # Build Docker images
+make logs             # Show container logs
+make stop             # Stop containers
+make health           # Check service health
+make clean            # Clean up resources
+
+# Quick start workflows
+make quick-dev        # Install + start development
+make quick-prod       # Build + start production
+```
+
+### Direct NPM Commands
 ```bash
 # Install dependencies
 npm install
@@ -103,6 +137,9 @@ npm start
 
 # Run tests
 npm test
+
+# Run security audit
+npm run test:security
 ```
 
 ### Docker Development
@@ -168,10 +205,34 @@ The application follows the Quantum Radio brand guidelines (`QuantumRadio_Style_
 ## Development Notes
 
 - Test suite configured with Jest (backend) and Vitest (frontend)
+- Security testing integrated with npm audit for vulnerability analysis
 - External dependencies: HLS stream and metadata from CloudFront CDN
 - Uses hardcoded stream URL in both `stream_URL.txt` and frontend code
 - PostgreSQL driver (`pg`) is optional - only required for production deployments
 - Development uses SQLite and doesn't require PostgreSQL dependencies
+
+## Security Testing
+
+The application includes security vulnerability scanning using npm audit:
+
+### Security Commands
+```bash
+# Check for security vulnerabilities (moderate+ severity)
+make test-security
+npm run test:security
+
+# Attempt to automatically fix vulnerabilities
+make test-security-fix
+npm run test:security:fix
+
+# Run comprehensive test suite (unit tests + security audit)
+make test-all
+```
+
+### Security Configuration
+- **Audit Level**: Set to `moderate` to catch medium and high severity issues
+- **Auto-fix**: Available via `test:security:fix` to automatically update vulnerable packages
+- **Integration**: Security audit included in comprehensive test suite (`test-all`)
 
 ## Docker Deployment
 

@@ -11,6 +11,8 @@
     "test:frontend": "vitest run tests/frontend",
     "test:watch": "npm run test:backend -- --watch & npm run test:frontend -- --watch",
     "test:coverage": "jest --coverage && vitest run --coverage",
+    "test:security": "npm audit --audit-level moderate",
+    "test:security:fix": "npm audit fix",
     "docker:build": "docker build -t quantum-radio:latest .",
     "docker:build:dev": "docker build -f Dockerfile.dev -t quantum-radio:dev .",
     "docker:run": "docker run -p 3000:3000 -v $(pwd)/database.db:/app/database.db quantum-radio:latest",
