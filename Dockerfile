@@ -1,5 +1,5 @@
 # Production Dockerfile for Quantum Radio
-FROM node:18-alpine
+FROM node:22-alpine
 
 # Install curl for health checks
 RUN apk add --no-cache curl

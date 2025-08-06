@@ -2,6 +2,13 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Build Status
+
+![CI/CD Pipeline](https://github.com/heiho1/quantum-radio/actions/workflows/ci.yml/badge.svg)
+![Tests](https://img.shields.io/badge/tests-passing-brightgreen)
+![Security](https://img.shields.io/badge/security-audited-blue)
+![Docker](https://img.shields.io/badge/docker-ready-success)
+
 ## Project Overview
 
 Quantum Radio is a streaming radio web application that plays high-quality audio with real-time metadata, track ratings, and recently played tracks. It consists of:
@@ -233,6 +240,34 @@ make test-all
 - **Audit Level**: Set to `moderate` to catch medium and high severity issues
 - **Auto-fix**: Available via `test:security:fix` to automatically update vulnerable packages
 - **Integration**: Security audit included in comprehensive test suite (`test-all`)
+
+## CI/CD Pipeline
+
+The project uses GitHub Actions for continuous integration and deployment:
+
+### Workflow Jobs
+1. **Unit Tests**: Runs tests on Node.js 18.x and 20.x with coverage reporting
+2. **Security Audit**: Performs npm security vulnerability scanning
+3. **Docker Build**: Tests both development and production container builds
+4. **Code Quality**: Runs linting and package auditing with detailed reporting
+5. **Staging Deploy**: Automatic deployment to staging on main branch
+
+### Workflow Triggers
+- **Push**: Triggers on main, master, develop, and docker-containerization branches
+- **Pull Request**: Triggers on PRs to main, master, and develop branches
+- **Manual**: Can be triggered manually from GitHub Actions tab
+
+### Test Coverage
+- Coverage reports uploaded to Codecov
+- Test results displayed in GitHub Actions summary
+- Security vulnerabilities reported with severity levels
+
+### Status Badges
+The build status badges show:
+- **CI/CD Pipeline**: Overall workflow status
+- **Tests**: Unit test status
+- **Security**: Security audit status  
+- **Docker**: Container build status
 
 ## Docker Deployment
 
