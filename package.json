@@ -17,8 +17,11 @@
     "docker:run:dev": "docker run -p 3001:3000 -v $(pwd):/app -v /app/node_modules -v $(pwd)/database.db:/app/database.db quantum-radio:dev",
     "docker:up": "docker compose up quantum-radio-prod",
     "docker:up:dev": "docker compose --profile dev up quantum-radio-dev",
+    "docker:up:prod": "docker compose -f docker-compose.prod.yml up -d",
     "docker:down": "docker compose down",
+    "docker:down:prod": "docker compose -f docker-compose.prod.yml down",
     "docker:logs": "docker compose logs -f",
+    "docker:logs:prod": "docker compose -f docker-compose.prod.yml logs -f",
     "docker:clean": "docker system prune -f && docker image prune -f"
   },
   "keywords": [],
@@ -37,7 +40,11 @@
     "jest": "^30.0.5",
     "jsdom": "^26.1.0",
     "nodemon": "^3.1.10",
+    "pg": "^8.13.1",
     "supertest": "^7.1.4",
     "vitest": "^3.2.4"
+  },
+  "optionalDependencies": {
+    "pg": "^8.13.1"
   }
 }

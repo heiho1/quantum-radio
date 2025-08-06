@@ -21,8 +21,12 @@ quantum-radio/
 |-- Dockerfile.dev                # Development Docker container
 |-- QuantumRadioLogo.png          # Brand logo asset
 |-- QuantumRadio_Style_Guide.txt  # Brand and UI style guidelines
-|-- database.db                   # SQLite database (committed artifact)
-|-- docker-compose.yml            # Docker orchestration configuration
+|-- database.db                   # SQLite database (development only)
+|-- database.js                   # Database abstraction layer (SQLite/PostgreSQL)
+|-- docker-compose.yml            # Docker orchestration configuration (dev/simple prod)
+|-- docker-compose.prod.yml       # Production Docker orchestration (Nginx + PostgreSQL)
+|-- init.sql                      # PostgreSQL database initialization script
+|-- nginx.conf                    # Nginx configuration for production
 |-- node_modules/                 # npm dependencies (gitignored)
 |-- package-lock.json             # npm lockfile
 |-- package.json                  # Project config and dependencies
@@ -65,7 +69,8 @@ quantum-radio/
 
 ### Backend (`server.js`)
 - Express.js server on port 3000 (configurable via PORT env var)
-- SQLite database (`database.db`) with two tables:
+- Database abstraction layer supporting SQLite (dev) and PostgreSQL (production)
+- Database tables:
   - `users`: basic user management (id, name, email, created_at)
   - `track_ratings`: track ratings with user sessions (track_id, rating, user_session, etc.)
 - API endpoints:
@@ -75,6 +80,7 @@ quantum-radio/
   - `GET /api/ratings/:trackId/user` - get user's rating for track
   - `POST /api/ratings` - submit/update rating
   - `DELETE /api/ratings/:trackId/user` - delete user's rating
+- Static file serving disabled in production (handled by Nginx)
 
 ### Database Schema
 - Automatic table creation on startup
@@ -103,17 +109,26 @@ npm test
 
 #### Using Docker Compose (Recommended)
 ```bash
-# Start production container on port 3000
+# Development: Start simple production container on port 3000
 npm run docker:up
 
-# Start development container on port 3001 with hot reload
+# Development: Start development container on port 3001 with hot reload
 npm run docker:up:dev
 
-# Stop all containers
+# Production: Start full production stack (Nginx + PostgreSQL + API)
+npm run docker:up:prod
+
+# Stop containers
 npm run docker:down
+
+# Stop production stack
+npm run docker:down:prod
 
 # View container logs
 npm run docker:logs
+
+# View production stack logs
+npm run docker:logs:prod
 ```
 
 #### Using Docker Commands Directly
@@ -136,11 +151,11 @@ npm run docker:clean
 
 ## Technology Stack
 
-- **Backend**: Express.js, SQLite3, CORS, express-fingerprint, dotenv
+- **Backend**: Express.js, SQLite3 (dev), PostgreSQL (prod), CORS, express-fingerprint, dotenv
 - **Frontend**: Vanilla HTML/CSS/JavaScript, HLS.js
 - **Audio**: HLS streaming with external metadata API
 - **Styling**: CSS custom properties, glassmorphism design, Montserrat + Open Sans fonts
-- **Containerization**: Docker, Docker Compose
+- **Infrastructure**: Docker, Docker Compose, Nginx (production), PostgreSQL (production)
 - **Testing**: Jest (backend), Vitest (frontend)
 
 ## Design System
@@ -155,26 +170,37 @@ The application follows the Quantum Radio brand guidelines (`QuantumRadio_Style_
 - Test suite configured with Jest (backend) and Vitest (frontend)
 - External dependencies: HLS stream and metadata from CloudFront CDN
 - Uses hardcoded stream URL in both `stream_URL.txt` and frontend code
+- PostgreSQL driver (`pg`) is optional - only required for production deployments
+- Development uses SQLite and doesn't require PostgreSQL dependencies
 
 ## Docker Deployment
 
-The application supports both development and production Docker environments:
+The application supports multiple Docker deployment configurations:
 
-### Production Deployment
-- **Image**: Built from `Dockerfile` using Node.js 18 Alpine
-- **Port**: 3000 (configurable via PORT env var)
-- **Database**: SQLite database mounted as volume (`./database.db:/app/database.db`)
-- **Security**: Runs as non-root user (`quantum:nodejs`)
-- **Health Check**: Automated health monitoring on `/api/users` endpoint
+### Production Deployment (`docker-compose.prod.yml`)
+- **Architecture**: Multi-container setup with Nginx, Node.js API, and PostgreSQL
+- **Frontend**: Nginx serves static files with compression, caching, and rate limiting
+- **Backend**: Node.js API container (port 3000, internal network)
+- **Database**: PostgreSQL 16 with persistent volume storage
+- **Port**: External access on port 80 (Nginx)
+- **Security**: Non-root users, network isolation, security headers
+- **Health Checks**: All services monitored with automatic health checks
 
-### Development Environment
-- **Image**: Built from `Dockerfile.dev` with development dependencies
-- **Port**: 3001 (mapped from container port 3000)
-- **Hot Reload**: Volume mounting enables live code changes
-- **Database**: Shared SQLite database with host system
+### Development Environment (`docker-compose.yml`)
+- **Development**: `quantum-radio-dev` service on port 3001 with hot reload
+- **Simple Production**: `quantum-radio-prod` service on port 3000 with SQLite
+- **Database**: SQLite for development, volume-mounted for persistence
+- **Hot Reload**: Development container supports live code changes
 
-### Docker Compose Configuration
-- **Production**: `quantum-radio-prod` service on port 3000
-- **Development**: `quantum-radio-dev` service on port 3001 (profile: dev)
-- **Volumes**: Database persistence and development code mounting
-- **Health Checks**: Automatic container health monitoring
+### Database Configuration
+- **Development**: SQLite database (`database.db`) with simple setup (no PostgreSQL required)
+- **Production**: PostgreSQL with automatic initialization via `init.sql`
+- **Abstraction**: Database layer (`database.js`) supports both SQLite and PostgreSQL
+- **Environment**: Database selection based on `NODE_ENV` variable
+- **Dependencies**: PostgreSQL driver (`pg`) conditionally loaded only in production
+
+### Nginx Configuration
+- **Static Assets**: Serves frontend files with optimized caching headers
+- **API Proxy**: Routes `/api/*` requests to backend with rate limiting
+- **Security**: Includes security headers and HTTPS-ready configuration
+- **Performance**: Gzip compression and efficient static file serving
